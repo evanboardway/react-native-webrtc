@@ -161,12 +161,13 @@ RCT_EXPORT_METHOD(peerConnectionAddTransceiver:(nonnull NSNumber *)objectID
     RTCRtpTransceiverInit *init = [RTCRtpTransceiverInit new];
     init.direction = RTCRtpTransceiverDirectionSendRecv;
     if ([options objectForKey:@"init"] != nil) {
-        NSDictionary* initOpt = [options objectForKey:options];
+        NSDictionary* initOpt = [options objectForKey:@"init"];
         if ([initOpt objectForKey:@"direction"] != nil) {
             init.direction = [self parseDirection: [initOpt objectForKey:@"direction"]];
         }
         if ([initOpt objectForKey:@"streamIds"] != nil) {
             init.streamIds = [initOpt objectForKey: @"streamIds"];
+            NSLog(@"adding transceiver with streamIds: %@", init.streamIds);
         }
     }
 
@@ -760,7 +761,7 @@ RCT_EXPORT_METHOD(getTrackVolumes:(RCTResponseSenderBlock)callback)
     NSMutableArray *streams = [NSMutableArray array];
     for (RTCMediaStream *stream in mediaStreams) {
         NSMutableArray *tracks = [self extractTracks:peerConnection stream:stream streamReactTag:stream.streamId];
-        [streams addObject:@{@"streamId": stream.streamId, @"streamReactTag": stream.streamId, @"tracks": tracks}];
+        [streams addObject:@{@"id": stream.streamId, @"streamId": stream.streamId, @"streamReactTag": stream.streamId, @"tracks": tracks}];
     }
 
     [self sendEventWithName:kEventPeerConnectionAddedReceiver
