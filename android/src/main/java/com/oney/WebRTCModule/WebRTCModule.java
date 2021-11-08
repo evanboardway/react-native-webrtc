@@ -426,10 +426,12 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         PeerConnection.RTCConfiguration rtcConfiguration = parseRTCConfiguration(configuration);
 
         try {
-            ThreadUtils.runOnExecutor(() -> peerConnectionInitAsync(rtcConfiguration, id));
+            ThreadUtils.runOnExecutor(() -> {
+                peerConnectionInitAsync(rtcConfiguration, id);
+            });
 
             ThreadUtils.submitToExecutor(() -> {
-                PeerConnectionObserver observer = new PeerConnectionObserver(this, id);
+                PeerConnectionObserver observer = new PeerConnectionObserver(this, id, true);
                 PeerConnection peerConnection = mFactory.createPeerConnection(rtcConfiguration, observer);
                 observer.setPeerConnection(peerConnection);
                 mPeerConnectionObservers.put(id, observer);
@@ -438,10 +440,9 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+    }
 
-    private void peerConnectionInitAsync(
-            PeerConnection.RTCConfiguration configuration,
-            int id) {
+    private void peerConnectionInitAsync(PeerConnection.RTCConfiguration configuration,int id) {
         PeerConnectionObserver observer = new PeerConnectionObserver(this,
                 id, configuration.sdpSemantics == PeerConnection.SdpSemantics.UNIFIED_PLAN);
         PeerConnection peerConnection
@@ -449,7 +450,7 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
 
         observer.setPeerConnection(peerConnection);
         mPeerConnectionObservers.put(id, observer);
->>>>>>> 717ed34 (api: Adding and stopping Transceiver (android + js))
+//>>>>>>> 717ed34 (api: Adding and stopping Transceiver (android + js))
     }
 
     MediaStream getStreamForReactTag(String streamReactTag) {
@@ -925,7 +926,7 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         }, sdp);
     }
 
-    @ReactMethod
+    /*@ReactMethod
     public void peerConnectionAddICECandidate(ReadableMap candidateMap,
                                               int id,
                                               Callback callback) {
@@ -953,6 +954,73 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
             }
             callback.invoke(success, newSdpMap);
         });
+    }
+    @ReactMethod
+    public void peerConnectionAddICECandidate(int pcId,
+                                              ReadableMap candidateMap,
+                                              Promise promise) {
+        ThreadUtils.runOnExecutor(() -> {
+            PeerConnection peerConnection = getPeerConnection(pcId);
+            if (peerConnection == null) {
+                Log.d(TAG, "peerConnectionAddICECandidate() peerConnection is null");
+                promise.reject(new Exception("PeerConnection not found"));
+                return;
+            }
+
+            if (!(candidateMap.hasKey("sdpMid") && candidateMap.hasKey("sdpMLineIndex") && candidateMap.hasKey("sdpMid"))) {
+                promise.reject("E_TYPE_ERROR", "Invalid argument");
+                return;
+            }
+
+            IceCandidate candidate = new IceCandidate(
+                    candidateMap.getString("sdpMid"),
+                    candidateMap.getInt("sdpMLineIndex"),
+                    candidateMap.getString("candidate")
+            );
+
+            peerConnection.addIceCandidate(candidate, new AddIceObserver() {
+                @Override
+                public void onAddSuccess() {
+                    WritableMap newSdpMap = Arguments.createMap();
+                    SessionDescription newSdp = peerConnection.getRemoteDescription();
+                    newSdpMap.putString("type", newSdp.type.canonicalForm());
+                    newSdpMap.putString("sdp", newSdp.description);
+                    promise.resolve(newSdpMap);
+                }
+
+                @Override
+                public void onAddFailure(String s) {
+                    promise.reject("E_OPERATION_ERROR", s);
+                }
+            });
+        });
+    }*/
+    @ReactMethod
+    public void peerConnectionAddICECandidate(ReadableMap candidateMap,
+                                              int id,
+                                              Callback callback) {
+        ThreadUtils.runOnExecutor(() ->
+                peerConnectionAddICECandidateAsync(candidateMap, id, callback));
+    }
+
+    private void peerConnectionAddICECandidateAsync(ReadableMap candidateMap,
+                                                    int id,
+                                                    Callback callback) {
+        boolean result = false;
+        PeerConnection peerConnection = getPeerConnection(id);
+        Log.d(TAG, "peerConnectionAddICECandidate() start");
+        if (peerConnection != null) {
+            IceCandidate candidate = new IceCandidate(
+                    candidateMap.getString("sdpMid"),
+                    candidateMap.getInt("sdpMLineIndex"),
+                    candidateMap.getString("candidate")
+            );
+            result = peerConnection.addIceCandidate(candidate);
+        } else {
+            Log.d(TAG, "peerConnectionAddICECandidate() peerConnection is null");
+        }
+        callback.invoke(result);
+        Log.d(TAG, "peerConnectionAddICECandidate() end");
     }
 
     @ReactMethod
