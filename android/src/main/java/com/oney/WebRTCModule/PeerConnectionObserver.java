@@ -69,6 +69,8 @@ class PeerConnectionObserver implements PeerConnection.Observer {
         this.videoTrackAdapters = new VideoTrackAdapter(webRTCModule, id);
     }
 
+
+
     /**
      * Adds a specific local <tt>MediaStream</tt> to the associated
      * <tt>PeerConnection</tt>.
